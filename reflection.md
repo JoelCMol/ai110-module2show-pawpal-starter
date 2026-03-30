@@ -2,6 +2,7 @@
 
 ## 1. System Design
 
+- Add a dog, track food/water intake, next pet visit
 **a. Initial design**
 
 - Briefly describe your initial UML design.
