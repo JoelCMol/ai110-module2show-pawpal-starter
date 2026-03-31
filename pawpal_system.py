@@ -1,6 +1,17 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from enum import Enum
+
+
+# ---------------------------------------------------------------------------
+# Priority
+# ---------------------------------------------------------------------------
+
+class Priority(Enum):
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
 
 
 # ---------------------------------------------------------------------------
@@ -14,7 +25,7 @@ class Task:
     description: str
     pet_id: str
     duration_minutes: int
-    priority: str  # "low", "medium", "high"
+    priority: Priority
     due_date: datetime
     is_completed: bool = False
     recurrence: str | None = None  # e.g. "daily", "weekly", or None
@@ -43,7 +54,7 @@ class Pet:
     species: str   # "dog", "cat", "other"
     breed: str
     birth_date: date
-    owner_id: str
+    owner: Owner   # direct reference instead of owner_id string
 
     def get_age(self) -> int:
         """Return the pet's age in whole years."""
@@ -91,7 +102,17 @@ class Owner:
 
 class Scheduler:
     def __init__(self) -> None:
-        self.task_queue: list[Task] = []
+        self.tasks: dict[str, Task] = {}
+        self.owners: dict[str, Owner] = {}
+        self.pets: dict[str, Pet] = {}
+
+    def register_owner(self, owner: Owner) -> None:
+        """Add an owner to the registry."""
+        pass
+
+    def register_pet(self, pet: Pet) -> None:
+        """Add a pet to the registry."""
+        pass
 
     def schedule_task(self, task: Task) -> None:
         """Add a task to the queue."""

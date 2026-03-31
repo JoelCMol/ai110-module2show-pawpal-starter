@@ -7,11 +7,26 @@
 
 - Briefly describe your initial UML design.
 - What classes did you include, and what responsibilities did you assign to each?
+I designed four main classes for PawPal+:
+- **Task** – Represents a single pet care activity. It stores things like due date, duration, priority, and recurrence. It can mark itself complete, be rescheduled, and check if it’s overdue.
+- **Pet** – Stores basic pet info like name, species, breed, and birth date. It can calculate its age and get its tasks, but it doesn’t handle scheduling itself.
+- **Owner** – Represents the user. It stores contact info and a list of pets, with simple methods to add, remove, and view pets.
+- **Scheduler** – Handles all the scheduling work. It manages tasks, finds upcoming or overdue ones, sends reminders, and creates a daily plan for each pet.
+
+Key idea: Pet and Owner mainly store data, while Scheduler handles the logic. I used IDs (like `pet_id` and `owner_id`) instead of direct links between objects to keep things flexible and less tightly connected.
 
 **b. Design changes**
 
-- Did your design change during implementation?
-- If yes, describe at least one change and why you made it.
+Three main changes were made after reviewing the design:
+
+1. Scheduler is now the central hub
+Originally, the Scheduler only had a simple list of tasks, so it couldn’t easily find pets or owners. Now it stores tasks, pets, and owners in dictionaries. This makes it easy to look things up and send reminders.
+
+2. Pet now links directly to Owner
+Before, Pet only stored an owner_id (a string), which was hard to use. Now it keeps a direct reference to the Owner object, making the connection clearer and easier to work with.
+
+3. Priority uses an enum instead of text
+Priority used to be strings like “high” or “low,” which caused sorting problems. Now it uses a numbered enum (LOW=1, MEDIUM=2, HIGH=3), so tasks can be sorted correctly and invalid values are avoided.
 
 ---
 

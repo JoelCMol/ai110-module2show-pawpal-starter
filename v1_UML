@@ -1,0 +1,52 @@
+```mermaid
+classDiagram
+    class Task {
+        +id: str
+        +title: str
+        +description: str
+        +pet_id: str
+        +duration_minutes: int
+        +priority: str
+        +due_date: datetime
+        +is_completed: bool
+        +recurrence: str | None
+        +complete() None
+        +reschedule(new_date) None
+        +is_overdue() bool
+    }
+
+    class Pet {
+        +id: str
+        +name: str
+        +species: str
+        +breed: str
+        +birth_date: date
+        +owner_id: str
+        +get_age() int
+        +get_tasks(scheduler) list[Task]
+    }
+
+    class Owner {
+        +id: str
+        +name: str
+        +email: str
+        +phone: str
+        +pets: list[Pet]
+        +add_pet(pet) None
+        +remove_pet(pet_id) None
+        +get_pets() list[Pet]
+    }
+
+    class Scheduler {
+        +task_queue: list[Task]
+        +schedule_task(task) None
+        +cancel_task(task_id) None
+        +get_upcoming_tasks(pet_id) list[Task]
+        +get_overdue_tasks() list[Task]
+        +send_reminder(task) None
+        +generate_daily_plan(pet_id) list[Task]
+    }
+
+    Owner "1" --> "0..*" Pet : owns
+    Pet ..> Scheduler : uses
+```
