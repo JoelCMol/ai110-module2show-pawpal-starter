@@ -1,6 +1,7 @@
 from __future__ import annotations
+import uuid
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from enum import Enum
 
 
@@ -41,6 +42,22 @@ class Task:
     def is_overdue(self) -> bool:
         """Return True if the task is past due and not yet completed."""
         return not self.is_completed and self.due_date < datetime.now()
+
+    def spawn_next(self) -> Task | None:
+        """Return a new Task for the next recurrence, or None if not recurring."""
+        delta = {"daily": timedelta(days=1), "weekly": timedelta(weeks=1)}.get(self.recurrence or "")
+        if delta is None:
+            return None
+        return Task(
+            id=str(uuid.uuid4()),
+            title=self.title,
+            description=self.description,
+            pet_id=self.pet_id,
+            duration_minutes=self.duration_minutes,
+            priority=self.priority,
+            due_date=self.due_date + delta,
+            recurrence=self.recurrence,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -128,6 +145,50 @@ class Scheduler:
         """Remove the task with the given id from the queue."""
         self.tasks.pop(task_id, None)
 
+    def complete_task(self, task_id: str) -> Task | None:
+        """Mark a task complete and auto-schedule its next occurrence if recurring.
+
+        Returns the newly created Task if one was spawned, otherwise None.
+        """
+        task = self.tasks.get(task_id)
+        if task is None:
+            return None
+        task.complete()
+        next_task = task.spawn_next()
+        if next_task:
+            self.schedule_task(next_task)
+        return next_task
+
+    def get_conflicts(self, *, same_pet_only: bool = False) -> list[str]:
+        """Return warning messages for any pending tasks whose time windows overlap.
+
+        By default checks across all pets. Pass same_pet_only=True to restrict
+        to conflicts between tasks belonging to the same pet.
+        """
+        pending = sorted(
+            [t for t in self.tasks.values() if not t.is_completed],
+            key=lambda t: t.due_date,
+        )
+        warnings = []
+        for i, a in enumerate(pending):
+            a_end = a.due_date + timedelta(minutes=a.duration_minutes)
+            for b in pending[i + 1:]:
+                if b.due_date >= a_end:
+                    break  # sorted by start time — no further overlaps possible
+                if same_pet_only and a.pet_id != b.pet_id:
+                    continue
+                pet_a = self.pets.get(a.pet_id)
+                pet_b = self.pets.get(b.pet_id)
+                name_a = pet_a.name if pet_a else a.pet_id
+                name_b = pet_b.name if pet_b else b.pet_id
+                scope = "same pet" if a.pet_id == b.pet_id else "different pets"
+                warnings.append(
+                    f"⚠ CONFLICT ({scope}): '{a.title}' ({name_a}, "
+                    f"{a.due_date.strftime('%I:%M %p')}–{a_end.strftime('%I:%M %p')}) "
+                    f"overlaps '{b.title}' ({name_b}, starts {b.due_date.strftime('%I:%M %p')})"
+                )
+        return warnings
+
     def get_upcoming_tasks(self, pet_id: str) -> list[Task]:
         """Return incomplete tasks for a pet, ordered by due date."""
         return sorted(
@@ -139,9 +200,40 @@ class Scheduler:
         """Return all incomplete tasks whose due date has passed."""
         return [t for t in self.tasks.values() if t.is_overdue()]
 
+def filter_tasks(
+    self,
+    *,
+    pet_name: str | None = None,
+    status: str = "all",
+) -> list[Task]:
+    """Return tasks optionally filtered by pet name and/or completion status."""
+
+    target_ids = None
+    if pet_name:
+        name = pet_name.lower()
+        target_ids = {
+            p.id for p in self.pets.values()
+            if p.name.lower() == name
+        }
+
+    def matches(task: Task) -> bool:
+        if target_ids is not None and task.pet_id not in target_ids:
+            return False
+        if status == "pending":
+            return not task.is_completed
+        if status == "completed":
+            return task.is_completed
+        return True
+
+    return [task for task in self.tasks.values() if matches(task)]
+
     def send_reminder(self, task: Task) -> None:
         """Send a reminder notification for the given task."""
         print(f"REMINDER: '{task.title}' is due {task.due_date.strftime('%Y-%m-%d %H:%M')}")
+
+    def sort_by_time(self, tasks: list[Task], *, reverse: bool = False) -> list[Task]:
+        """Return a new list of tasks sorted by due_date ascending (or descending if reverse=True)."""
+        return sorted(tasks, key=lambda t: t.due_date, reverse=reverse)
 
     def generate_daily_plan(self, pet_id: str) -> list[Task]:
         """Return today's incomplete tasks for a pet, sorted by priority then due time."""

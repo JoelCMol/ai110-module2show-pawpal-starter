@@ -40,7 +40,9 @@ Priority used to be strings like “high” or “low,” which caused sorting p
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
+The scheduler keeps all tasks in a plain Python dictionary in memory — fast and simple, but everything disappears the moment the program stops. There's no file or database, so you can't pick up where you left off between runs.
 - Why is that tradeoff reasonable for this scenario?
+This is reasonable because we have not implemented a backend for our web app to use.
 
 ---
 
