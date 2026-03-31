@@ -88,22 +88,33 @@ if st.button("Add task"):
         st.session_state.scheduler.schedule_task(task)
         st.success(f"Added '{task_title}' ({priority_str}, {due_time.strftime('%I:%M %p')})")
 
-# Show current tasks
+# Show current tasks — sorted by due time via scheduler
 pet = st.session_state.pet
 scheduler = st.session_state.scheduler
 if pet:
-    tasks = pet.get_tasks(scheduler)
-    if tasks:
-        st.write("Current tasks:")
+    all_tasks = pet.get_tasks(scheduler)
+    if all_tasks:
+        sorted_tasks = scheduler.sort_by_time(all_tasks)
+        st.write("Current tasks (sorted by due time):")
         st.table([
             {
                 "Title": t.title,
                 "Priority": t.priority.name,
                 "Due": t.due_date.strftime("%I:%M %p"),
                 "Duration (min)": t.duration_minutes,
+                "Status": "Done" if t.is_completed else ("Overdue" if t.is_overdue() else "Pending"),
             }
-            for t in tasks
+            for t in sorted_tasks
         ])
+
+        # Conflict warnings
+        conflicts = scheduler.get_conflicts()
+        if conflicts:
+            st.warning(f"**{len(conflicts)} scheduling conflict(s) detected:**")
+            for msg in conflicts:
+                st.warning(msg)
+        else:
+            st.success("No scheduling conflicts.")
     else:
         st.info("No tasks yet. Add one above.")
 
@@ -125,15 +136,22 @@ if st.button("Generate schedule"):
         if not plan:
             st.info("No tasks due today.")
         else:
-            st.success(f"Today's plan for **{pet.name}** ({len(plan)} tasks)")
+            st.success(f"Today's plan for **{pet.name}** — {len(plan)} task(s) scheduled")
             for i, task in enumerate(plan, 1):
-                overdue = " ⚠️ overdue" if task.is_overdue() else ""
-                st.markdown(
-                    f"**{i}. {task.title}**{overdue}  \n"
-                    f"Priority: `{task.priority.name}` · "
-                    f"Due: `{task.due_date.strftime('%I:%M %p')}` · "
-                    f"Duration: `{task.duration_minutes} min`"
-                )
+                if task.is_overdue():
+                    st.warning(
+                        f"**{i}. {task.title}** — Overdue  \n"
+                        f"Priority: `{task.priority.name}` · "
+                        f"Was due: `{task.due_date.strftime('%I:%M %p')}` · "
+                        f"Duration: `{task.duration_minutes} min`"
+                    )
+                else:
+                    st.info(
+                        f"**{i}. {task.title}**  \n"
+                        f"Priority: `{task.priority.name}` · "
+                        f"Due: `{task.due_date.strftime('%I:%M %p')}` · "
+                        f"Duration: `{task.duration_minutes} min`"
+                    )
 
         overdue_tasks = scheduler.get_overdue_tasks()
         if overdue_tasks:
