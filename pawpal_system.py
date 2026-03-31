@@ -200,32 +200,31 @@ class Scheduler:
         """Return all incomplete tasks whose due date has passed."""
         return [t for t in self.tasks.values() if t.is_overdue()]
 
-def filter_tasks(
-    self,
-    *,
-    pet_name: str | None = None,
-    status: str = "all",
-) -> list[Task]:
-    """Return tasks optionally filtered by pet name and/or completion status."""
+    def filter_tasks(
+        self,
+        *,
+        pet_name: str | None = None,
+        status: str = "all",
+    ) -> list[Task]:
+        """Return tasks optionally filtered by pet name and/or completion status."""
+        target_ids = None
+        if pet_name:
+            name = pet_name.lower()
+            target_ids = {
+                p.id for p in self.pets.values()
+                if p.name.lower() == name
+            }
 
-    target_ids = None
-    if pet_name:
-        name = pet_name.lower()
-        target_ids = {
-            p.id for p in self.pets.values()
-            if p.name.lower() == name
-        }
+        def matches(task: Task) -> bool:
+            if target_ids is not None and task.pet_id not in target_ids:
+                return False
+            if status == "pending":
+                return not task.is_completed
+            if status == "completed":
+                return task.is_completed
+            return True
 
-    def matches(task: Task) -> bool:
-        if target_ids is not None and task.pet_id not in target_ids:
-            return False
-        if status == "pending":
-            return not task.is_completed
-        if status == "completed":
-            return task.is_completed
-        return True
-
-    return [task for task in self.tasks.values() if matches(task)]
+        return [task for task in self.tasks.values() if matches(task)]
 
     def send_reminder(self, task: Task) -> None:
         """Send a reminder notification for the given task."""
